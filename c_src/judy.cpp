@@ -2,7 +2,7 @@
 #include <string.h>
 #include <Judy.h>
 #include "erl_nif.h"
-#include "judy.h"
+#include "judy.hpp"
 
 
 char* mk_value(unsigned char* value, size_t size)
