@@ -1,12 +1,7 @@
-{application, judy,
- [
-  {description, ""},
-  {vsn, "1"},
-  {registered, []},
-  {applications, [
-                  kernel,
-                  stdlib
-                 ]},
-  {mod, { judy_app, []}},
-  {env, []}
- ]}.
+{application, judy, [
+    {description, "Judy Array NIF"},
+    {vsn, git},
+    {modules, [judy]},
+    {registered, []},
+    {applications, [kernel, stdlib]}
+]}.
