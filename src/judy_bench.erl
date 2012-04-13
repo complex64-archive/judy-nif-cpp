@@ -1,7 +1,6 @@
--module(basho_bench_driver_judy).
+-module (judy_bench).
 
--export([new/1,
-         run/4]).
+-export([new/1, run/4]).
 
 new(_Id) ->
     InitialKeys = basho_bench_config:get(initial_keys),
