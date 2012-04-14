@@ -1,0 +1,3 @@
+[submodule "priv/judy-cpp"]
+	path = priv/judy-cpp
+	url = git@github.com:johannesh/judy-cpp.git
