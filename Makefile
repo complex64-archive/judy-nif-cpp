@@ -6,7 +6,8 @@ clean:
 build: judy nif
 
 judy:
-	cd priv/judy && ./configure --quiet --prefix=`pwd`/stage && \
+	cd priv/judy && \
+		./configure --quiet && \
 		make --quiet && make install 1>/dev/null
 
 nif:
