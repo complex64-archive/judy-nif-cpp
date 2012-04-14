@@ -1,3 +1,0 @@
-[submodule "c_src/judy-cpp"]
-	path = c_src/judy-cpp
-	url = git@github.com:johannesh/judy-cpp.git
