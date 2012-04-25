@@ -5,6 +5,7 @@
 #include <boost/pool/pool_alloc.hpp>
 
 #include <memory>
+#include <exception>
 
 
 #ifdef __cplusplus
@@ -19,6 +20,7 @@ typedef void* any_ref;
 
 /** TODO - Document. */
 typedef judy::hs<
+    ErlNifBinary,
     ErlNifBinary,
     boost::fast_pool_allocator<ErlNifBinary>
 > judy_hs_arr;
@@ -44,7 +46,7 @@ judy_hs_new(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
 static ERL_NIF_TERM
 judy_hs_insert(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
 {
-    judy_hs_arr::key_type   key;
+    judy_hs_arr::key_type key;
     judy_hs_arr::value_type value;
     any_ref obj;
 
@@ -67,13 +69,20 @@ judy_hs_insert(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
 
 /** TODO - Document. */
 static ERL_NIF_TERM
-judy_hs_delete(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
+judy_hs_remove(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
 {
     judy_hs_arr::key_type key;
+    any_ref obj;
 
-    if (enif_inspect_binary(env, argv[1], &key)) {
-        // TODO - Implement.
-        return enif_make_atom(env, "not_implemented");
+    if (enif_inspect_binary(env, argv[1], &key) &&
+        enif_get_resource(env, argv[0], JUDY_HS_ARR, &obj))
+    {
+        judy_hs_arr* arr = reinterpret_cast<judy_hs_arr*>(obj);
+
+        bool was_removed = arr->remove(key);
+        const char* return_val = (was_removed ? "true" : "false");
+
+        return enif_make_atom(env, return_val);
     }
     else {
         return enif_make_badarg(env);
@@ -86,10 +95,22 @@ static ERL_NIF_TERM
 judy_hs_get(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
 {
     judy_hs_arr::key_type key;
+    any_ref obj;
 
-    if (enif_inspect_binary(env, argv[1], &key)) {
-        // TODO - Implement.
-        return enif_make_atom(env, "not_implemented");
+    if (enif_inspect_binary(env, argv[1], &key) &&
+        enif_get_resource(env, argv[0], JUDY_HS_ARR, &obj))
+    {
+        judy_hs_arr* arr = reinterpret_cast<judy_hs_arr*>(obj);
+
+        try {
+            judy_hs_arr::value_type value = arr->get(key);
+            return enif_make_binary(env, &value);
+        }
+        catch (int) {
+            return enif_make_tuple2(env,
+                enif_make_atom(env, "error"),  enif_make_binary(env, &key)
+            );
+        }
     }
     else {
         return enif_make_badarg(env);
@@ -166,7 +187,7 @@ static ErlNifFunc judy_hs_funs[] =
 {
     {"new",         0, judy_hs_new},
     {"nif_insert",  3, judy_hs_insert},
-    {"nif_delete",  2, judy_hs_delete},
+    {"nif_remove",  2, judy_hs_remove},
     {"nif_get",     2, judy_hs_get}
 };
 
