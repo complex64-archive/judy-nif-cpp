@@ -1,8 +1,6 @@
 #include "judy-cpp.hpp"
 
 #include <erl_nif.h>
-#include <boost/pool/poolfwd.hpp>
-#include <boost/pool/pool_alloc.hpp>
 
 #include <memory>
 #include <exception>
@@ -127,11 +125,6 @@ hs_dtor(ErlNifEnv* env, any_ref obj)
     // Get a handle to the array, then explicitly deconstruct.
     judy_hs_arr* arr = reinterpret_cast<judy_hs_arr*>(obj);
     arr->~hs();
-
-    // Force freeing the system memory.
-    boost::singleton_pool<
-        boost::pool_allocator_tag, sizeof(judy_hs_arr::value_type)
-    >::release_memory();
 
     // Then free the memory allocated for the pointer.
     enif_release_resource(obj);
