@@ -33,6 +33,7 @@ judy_hs_new(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
     judy_hs_arr* arr = reinterpret_cast<judy_hs_arr*>(
         enif_alloc_resource(JUDY_HS_ARR, sizeof(judy_hs_arr))
     );
+    *arr = judy_hs_arr();
 
     ERL_NIF_TERM arr_res = enif_make_resource(env, arr);
     enif_release_resource(arr);
