@@ -20,9 +20,8 @@ typedef void* any_ref;
 
 /** TODO - Document. */
 typedef judy::hs<
-    ErlNifBinary,
-    ErlNifBinary,
-    boost::fast_pool_allocator<ErlNifBinary>
+    ErlNifBinary,  // Key-type.
+    ErlNifBinary   // Value-type.
 > judy_hs_arr;
 
 
