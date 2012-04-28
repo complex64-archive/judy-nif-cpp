@@ -9,7 +9,7 @@ build: judy nif
 judy:
 	cd priv/judy && \
 		./configure --quiet && \
-		make --quiet && make install 1>/dev/null
+		make --quiet && make install
 
 nif:
 	rebar compile
