@@ -2,62 +2,125 @@
 
 #include <erl_nif.h>
 
-#include <memory>
-#include <exception>
-
-
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 
-/** TODO - Document. */
-static ErlNifResourceType* JUDY_HS_ARR;
+namespace judy_nif
+{
 
-typedef void* any_ref;
+/// Type of key used for entries in the JudyHS array.
+typedef unsigned char hs_key_type;
+typedef hs_key_type*  hs_key_pointer;
 
-/** TODO - Document. */
-typedef judy::hs<
-    ErlNifBinary,  // Key-type.
-    ErlNifBinary   // Value-type.
-> judy_hs_arr;
+/// Type of data stored in an erlang binary.
+typedef unsigned char  hs_value_type;
+typedef hs_value_type* hs_value_pointer;
+
+/// A single element in the array.
+typedef struct {
+    hs_key_pointer   key;
+    hs_value_pointer value;
+    std::size_t      value_size;
+} hs_element_type;
+
+typedef hs_element_type* hs_element_pointer;
+
+
+/// Type alias for an JudyHS array instance.
+typedef judy::hs<hs_key_pointer, hs_element_pointer> hs_array_type;
+
+/// Pointer to an JudyHS array.
+typedef hs_array_type* hs_array_pointer;
+
+
+/// Allocator used for new elements in the array.
+typedef boost::fast_pool_allocator<hs_element_type> hs_allocator_type;
+typedef hs_allocator_type::rebind<hs_key_type>      hs_key_allocator_type;
+typedef hs_allocator_type::rebind<hs_value_type>    hs_value_allocator_type;
+
+static hs_allocator_type hs_allocator;
+
+} // namespace
 
 
 
-/** TODO - Document. */
+/// Erlang NIF resource instance for JudyHS arrays.
+static ErlNifResourceType* JUDY_HS_RES;
+
+
+
 static ERL_NIF_TERM
 judy_hs_new(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
 {
-    judy_hs_arr* arr = reinterpret_cast<judy_hs_arr*>(
-        enif_alloc_resource(JUDY_HS_ARR, sizeof(judy_hs_arr))
-    );
-    *arr = judy_hs_arr();
+    using namespace judy_nif;
 
-    ERL_NIF_TERM arr_res = enif_make_resource(env, arr);
-    enif_release_resource(arr);
+    // Get memory for the new array object from the VM
+    void* resource =
+        enif_alloc_resource(JUDY_HS_RES, sizeof(hs_array_type));
+
+    // Create the array itself
+    hs_array_pointer arr_p = static_cast<hs_array_pointer>(resource);
+    arr_p = new (arr_p) hs_array_type;
+
+    // Return the array to the VM
+    ERL_NIF_TERM arr_res = enif_make_resource(env, arr_p);
+    enif_release_resource(arr_p);
 
     return arr_res;
 }
 
 
-/** TODO - Document. */
 static ERL_NIF_TERM
 judy_hs_insert(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
 {
-    judy_hs_arr::key_type key;
-    judy_hs_arr::value_type value;
-    any_ref obj;
+    using namespace judy_nif;
 
-    if (enif_inspect_binary(env, argv[1], &key) &&
-        enif_inspect_binary(env, argv[2], &value) &&
-          enif_get_resource(env, argv[0], JUDY_HS_ARR, &obj))
+    ErlNifBinary key0;
+    ErlNifBinary value0;
+    void* arr0;
+
+    if (enif_inspect_binary(env, argv[1], &key0) &&
+        enif_inspect_binary(env, argv[2], &value0) &&
+          enif_get_resource(env, argv[0], JUDY_HS_RES, &arr0))
     {
-        judy_hs_arr* arr = reinterpret_cast<judy_hs_arr*>(obj);
+        hs_array_pointer arr_p = static_cast<hs_array_pointer>(arr0);
 
-        bool new_insert = arr->insert(key, value);
-        const char* return_val = (new_insert ? "true" : "false");
+        const std::size_t value_size = value0.size;
+        const std::size_t key_size   = key0.size;
 
-        return enif_make_atom(env, return_val);
+        // Allocate memory for the new element.
+        hs_element_pointer elem_p =
+            new (hs_allocator.allocate(1)) hs_element_type;
+        elem_p->value_size = value_size;
+
+        // Copy over the key.
+        hs_key_pointer key_p =
+            hs_key_allocator_type::other(hs_allocator).allocate(key_size);
+        std::copy(key0.data, key0.data + key_size, key_p);
+        elem_p->key = key_p;
+
+        // And copy over the value.
+        hs_value_pointer value_p =
+            hs_value_allocator_type::other(hs_allocator).allocate(value_size);
+        std::copy(value0.data, (value0.data + value_size), value_p);
+        elem_p->value = value_p;
+
+        // Insert new element and retrieve old value (if any).
+        hs_element_pointer old_value =
+            arr_p->insert(elem_p->key, key_size, elem_p);
+
+        // In case a value was present and thue replaced,
+        // deallocate the old value.
+        if (old_value != 0) {
+            hs_key_allocator_type::other(hs_allocator).deallocate(old_value->key);
+            hs_value_allocator_type::other(hs_allocator).deallocate(old_value->value);
+            hs_allocator.deallocate(old_value);
+        }
+
+        // Return whether the value was newly inserted.
+        return enif_make_atom(env, (old_value == 0) ? "true" : "false");
     }
     else {
         return enif_make_badarg(env);
@@ -65,49 +128,58 @@ judy_hs_insert(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
 }
 
 
-/** TODO - Document. */
 static ERL_NIF_TERM
 judy_hs_remove(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
 {
-    judy_hs_arr::key_type key;
-    any_ref obj;
+    using namespace judy_nif;
 
-    if (enif_inspect_binary(env, argv[1], &key) &&
-        enif_get_resource(env, argv[0], JUDY_HS_ARR, &obj))
-    {
-        judy_hs_arr* arr = reinterpret_cast<judy_hs_arr*>(obj);
+    // ErlNifBinary key;
+    // void* arr0;
 
-        bool was_removed = arr->remove(key);
-        const char* return_val = (was_removed ? "true" : "false");
+    // if (enif_inspect_binary(env, argv[1], &key) &&
+    //     enif_get_resource(env, argv[0], JUDY_HS_RES, &arr0))
+    // {
+    //     hs_array_pointer arr = static_cast<hs_array_pointer>(arr0);
 
-        return enif_make_atom(env, return_val);
-    }
-    else {
+    //     bool was_removed = arr->remove(key.data, key.size);
+    //     const char* return_val = (was_removed ? "true" : "false");
+
+    //     return enif_make_atom(env, return_val);
+    // }
+    // else {
         return enif_make_badarg(env);
-    }
+    // }
 }
 
 
-/** TODO - Document. */
 static ERL_NIF_TERM
 judy_hs_get(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
 {
-    judy_hs_arr::key_type key;
-    any_ref obj;
+    using namespace judy_nif;
+
+    ErlNifBinary key;
+    void* arr0;
 
     if (enif_inspect_binary(env, argv[1], &key) &&
-        enif_get_resource(env, argv[0], JUDY_HS_ARR, &obj))
+        enif_get_resource(env, argv[0], JUDY_HS_RES, &arr0))
     {
-        judy_hs_arr* arr = reinterpret_cast<judy_hs_arr*>(obj);
+        hs_array_pointer arr_p = static_cast<hs_array_pointer>(arr0);
 
         try {
-            judy_hs_arr::value_type value = arr->get(key);
-            return enif_make_binary(env, &value);
+            // Retrieve back the element's pointer.
+            hs_element_pointer elem_p = arr_p->get(key.data, key.size);
+
+            const std::size_t value_size = elem_p->value_size;
+
+            ERL_NIF_TERM term;
+            hs_value_pointer binary = enif_make_new_binary(env, value_size, &term);
+            std::copy(elem_p->value, (elem_p->value + value_size), binary);
+
+            return term;
         }
-        catch (int) {
+        catch (bool) {
             return enif_make_tuple2(env,
-                enif_make_atom(env, "error"),  enif_make_binary(env, &key)
-            );
+                enif_make_atom(env, "error"), enif_make_binary(env, &key));
         }
     }
     else {
@@ -120,11 +192,15 @@ judy_hs_get(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
 /** Called both for existing instances as well as new instances not yet created
     by the calling NIF library. */
 void
-hs_dtor(ErlNifEnv* env, any_ref obj)
+hs_dtor(ErlNifEnv* env, void* obj)
 {
+    using namespace judy_nif;
+
     // Get a handle to the array, then explicitly deconstruct.
-    judy_hs_arr* arr = reinterpret_cast<judy_hs_arr*>(obj);
+    hs_array_type* arr = static_cast<hs_array_type*>(obj);
     arr->~hs();
+
+    // FIXME - Deallocate properly.
 
     // Then free the memory allocated for the pointer.
     enif_release_resource(obj);
@@ -134,16 +210,16 @@ hs_dtor(ErlNifEnv* env, any_ref obj)
 /** Called when the NIF library is loaded and there is no previously loaded
     library for this module. */
 static int
-hs_load(ErlNifEnv* env, any_ref* priv_data, ERL_NIF_TERM load_info)
+hs_load(ErlNifEnv* env, void** priv_data, ERL_NIF_TERM load_info)
 {
-    // Create or open the JUDY_HS_ARR resource type.
+    // Create or open the JUDY_HS_RES resource type.
     ErlNifResourceFlags flags = (ErlNifResourceFlags)
         (ERL_NIF_RT_CREATE | ERL_NIF_RT_TAKEOVER);
 
     // Create or takeover a resource type identified by the string name and
     // give it the destructor function pointed to by dtor.
-    JUDY_HS_ARR =
-        enif_open_resource_type(env, NULL, "judy_hs_arr", &hs_dtor, flags, 0);
+    JUDY_HS_RES =
+        enif_open_resource_type(env, NULL, "hs_array_type", &hs_dtor, flags, 0);
 
     return 0;
 }
@@ -152,7 +228,7 @@ hs_load(ErlNifEnv* env, any_ref* priv_data, ERL_NIF_TERM load_info)
 /** Called when the NIF library is loaded and there is already a previously
     loaded library for this module code. */
 static int
-hs_reload(ErlNifEnv* env, any_ref* priv_data, ERL_NIF_TERM load_info)
+hs_reload(ErlNifEnv* env, void** priv_data, ERL_NIF_TERM load_info)
 {
     // Works the same as load. The only difference is that *priv_data already
     // contains the value set by the previous call to load or reload.
@@ -163,7 +239,7 @@ hs_reload(ErlNifEnv* env, any_ref* priv_data, ERL_NIF_TERM load_info)
 /** Called when the NIF library is loaded and there is old code of this module
     with a loaded NIF library. */
 static int
-hs_upgrade(ErlNifEnv* env, any_ref* priv, any_ref* old_priv, ERL_NIF_TERM load_info)
+hs_upgrade(ErlNifEnv* env, void** priv, void** old_priv, ERL_NIF_TERM load_info)
 {
     // Works the same as load. The only difference is that *old_priv_data
     // already contains the value set by the last call to load or reload for
