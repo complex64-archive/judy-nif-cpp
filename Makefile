@@ -2,7 +2,7 @@ all: build
 
 clean:
 	rebar clean ; \
-	cd priv/judy && (make clean || make distclean)
+	cd priv/judy && (make clean || make distclean) > /dev/null; true
 
 build: judy nif
 
