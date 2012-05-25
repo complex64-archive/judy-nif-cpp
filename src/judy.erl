@@ -1,5 +1,7 @@
--module (judy_hs).
--export ([init/0, new/0, insert/3, remove/2, get/2, mget/2, gc/1, reserve/2]).
+-module (judy).
+-export ([
+    init/0, new/0, insert/3, remove/2, get/2, mget/2,
+    size/1, gc/1, reserve/2 ]).
 
 -on_load (init/0).
 
@@ -42,6 +44,11 @@ nif_remove(_JudyArr, _Key) ->
 
 % TODO - Document!
 reserve(_JudyArr, _Size) ->
+    erlang:nif_error(nif_not_loaded).
+
+
+% TODO - Document!
+size(_JudyArr) ->
     erlang:nif_error(nif_not_loaded).
 
 
