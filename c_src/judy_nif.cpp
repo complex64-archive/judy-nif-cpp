@@ -160,6 +160,6 @@ static ErlNifFunc judy_funs[] =
 
 
 // Initialize the NIF library.
-ERL_NIF_INIT(judy_hs, judy_funs, &load, &reload, &upgrade, NULL);
+ERL_NIF_INIT(judy, judy_funs, &load, &reload, &upgrade, NULL);
 
 }
