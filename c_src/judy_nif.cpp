@@ -1,25 +1,24 @@
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include <erl_nif.h>
 #include "judy_nif_array.hpp"
 
 
+extern "C" {
+
+typedef judy_nif::binary_array array_type;
+typedef array_type* array_pointer;
+
 /// Erlang NIF resource instance for JudyHS arrays.
-static ErlNifResourceType* JUDY_HS_RES;
+static ErlNifResourceType* JUDY_NIF_RES;
 
 
 // Native implementation of judy:new/0.
 static ERL_NIF_TERM
 judy_new(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
 {
-    using namespace judy_nif;
-
     // Get memory for the new array object from the VM
     array_pointer arr =
         static_cast<array_pointer>(
-            enif_alloc_resource(JUDY_HS_RES, sizeof(array_type)));
+            enif_alloc_resource(JUDY_NIF_RES, sizeof(array_type)));
 
     // Construct the object.
     new (arr) array_type;
@@ -36,25 +35,19 @@ judy_new(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
 static ERL_NIF_TERM
 judy_insert(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
 {
-    using namespace judy_nif;
-
-    ErlNifBinary key;
-    ErlNifBinary value;
-    void* arr0;
+    ErlNifBinary key, value;
+    void* arr0 = 0;
+    array_pointer arr = 0;
 
     if (enif_inspect_binary(env, argv[1], &key) &&
-        enif_inspect_binary(env, argv[2], &value) &&
-          enif_get_resource(env, argv[0], JUDY_HS_RES, &arr0))
-    {
-        array_pointer arr = static_cast<array_pointer>(arr0);
+            enif_inspect_binary(env, argv[2], &value) &&
+            enif_get_resource(env, argv[0], JUDY_NIF_RES, &arr0))
+        arr = static_cast<array_pointer>(arr0);
+    else enif_make_badarg(env);
 
-        // Return whether the value was newly inserted.
-        bool newly_inserted = arr->insert(key, value);
-        return enif_make_atom(env, newly_inserted ? "true" : "false");
-    }
-    else {
-        return enif_make_badarg(env);
-    }
+    // Return whether the value was newly inserted.
+    bool newly_inserted = arr->insert(key, value);
+    return enif_make_atom(env, newly_inserted ? "true" : "false");
 }
 
 
@@ -62,23 +55,18 @@ judy_insert(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
 static ERL_NIF_TERM
 judy_remove(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
 {
-    using namespace judy_nif;
-
     ErlNifBinary key;
-    void* arr0;
+    void* arr0 = 0;
+    array_pointer arr = 0;
 
     if (enif_inspect_binary(env, argv[1], &key) &&
-        enif_get_resource(env, argv[0], JUDY_HS_RES, &arr0))
-    {
-        array_pointer arr = static_cast<array_pointer>(arr0);
+            enif_get_resource(env, argv[0], JUDY_NIF_RES, &arr0))
+        arr = static_cast<array_pointer>(arr0);
+    else return enif_make_badarg(env);
 
-        // Return whether the value was actually removed.
-        bool was_removed = arr->remove(key);
-        return enif_make_atom(env, was_removed ? "true" : "false");
-    }
-    else {
-        return enif_make_badarg(env);
-    }
+    // Return whether the value was actually removed.
+    bool was_removed = arr->remove(key);
+    return enif_make_atom(env, was_removed ? "true" : "false");
 }
 
 
@@ -86,28 +74,20 @@ judy_remove(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
 static ERL_NIF_TERM
 judy_get(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
 {
-    using namespace judy_nif;
-
     ErlNifBinary key;
-    void* arr0;
+    void* arr0 = 0;
+    array_pointer arr = 0;
 
     if (enif_inspect_binary(env, argv[1], &key) &&
-        enif_get_resource(env, argv[0], JUDY_HS_RES, &arr0))
-    {
-        array_pointer arr = static_cast<array_pointer>(arr0);
-        ERL_NIF_TERM term = arr->get(key);
+            enif_get_resource(env, argv[0], JUDY_NIF_RES, &arr0))
+        arr = static_cast<array_pointer>(arr0);
+    else return enif_make_badarg(env);
 
-        if (term != 0) {
-            return term;
-        }
-        else {
-            return enif_make_tuple2(env,
-                enif_make_atom(env, "error"), enif_make_binary(env, &key));
-        }
-    }
-    else {
-        return enif_make_badarg(env);
-    }
+    ERL_NIF_TERM term = arr->get(key, env);
+
+    if (term != 0) return term;
+    else return enif_make_tuple2(env,
+        enif_make_atom(env, "error"), enif_make_binary(env, &key));
 }
 
 
@@ -117,8 +97,6 @@ judy_get(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
 void
 dtor(ErlNifEnv* env, void* obj)
 {
-    using namespace judy_nif;
-
     // Get a handle to the array, then explicitly deconstruct.
     array_pointer arr = static_cast<array_pointer>(obj);
     arr->~array_type();
@@ -133,14 +111,14 @@ dtor(ErlNifEnv* env, void* obj)
 static int
 load(ErlNifEnv* env, void** priv_data, ERL_NIF_TERM load_info)
 {
-    // Create or open the JUDY_HS_RES resource type.
+    // Create or open the JUDY_NIF_RES resource type.
     ErlNifResourceFlags flags = (ErlNifResourceFlags)
         (ERL_NIF_RT_CREATE | ERL_NIF_RT_TAKEOVER);
 
     // Create or takeover a resource type identified by the string name and
     // give it the destructor function pointed to by dtor.
-    JUDY_HS_RES =
-        enif_open_resource_type(env, NULL, "judy_type", &dtor, flags, 0);
+    JUDY_NIF_RES =
+        enif_open_resource_type(env, NULL, "judy_nif_res", &dtor, flags, 0);
 
     return 0;
 }
@@ -184,7 +162,4 @@ static ErlNifFunc judy_funs[] =
 // Initialize the NIF library.
 ERL_NIF_INIT(judy_hs, judy_funs, &load, &reload, &upgrade, NULL);
 
-
-#ifdef __cplusplus
 }
-#endif
