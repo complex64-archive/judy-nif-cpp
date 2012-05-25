@@ -1,5 +1,5 @@
 -module (judy_hs).
--export ([init/0, new/0, insert/3, remove/2, get/2]).
+-export ([init/0, new/0, insert/3, remove/2, get/2, mget/2, gc/1, reserve/2]).
 
 -on_load (init/0).
 
@@ -40,6 +40,15 @@ nif_remove(_JudyArr, _Key) ->
     erlang:nif_error(nif_not_loaded).
 
 
+% TODO - Document!
+reserve(_JudyArr, _Size) ->
+    erlang:nif_error(nif_not_loaded).
+
+
+% TODO - Document!
+gc(_JudyArr) ->
+    erlang:nif_error(nif_not_loaded).
+
 
 % TODO - Document!
 get(JudyArr, Key) ->
@@ -50,6 +59,10 @@ get(JudyArr, Key) ->
 nif_get(_JudyArr, _Key) ->
     erlang:nif_error(nif_not_loaded).
 
+
+% TODO - Document!
+mget(JudyArr, Keys) ->
+    [?MODULE:get(JudyArr, Key) || Key <- Keys].
 
 
 % TODO - Document!
