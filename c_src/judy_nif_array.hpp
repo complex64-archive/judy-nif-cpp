@@ -108,7 +108,7 @@ public:
         }
 
         // Return whether the value was newly inserted.
-        return (old_value == 0) ? true : false;
+        return old_value == 0;
     }
 
 
@@ -131,8 +131,10 @@ public:
     bool
     remove(const binary_reference key)
     {
-        // FIXME - Deallocate!
-        return judy_.remove(key.data, key.size);
+        element_pointer old_value = judy_.remove(key.data, key.size);
+
+        // Return whether the value was actually removed.
+        return old_value != 0;
     }
 
 
