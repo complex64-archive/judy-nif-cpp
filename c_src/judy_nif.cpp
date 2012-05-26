@@ -91,6 +91,21 @@ judy_get(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
 }
 
 
+// Native implementation of judy:size/1.
+static ERL_NIF_TERM
+judy_size(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
+{
+    void* arr0 = 0;
+    array_pointer arr = 0;
+
+    if (enif_get_resource(env, argv[0], JUDY_NIF_RES, &arr0))
+        arr = static_cast<array_pointer>(arr0);
+    else return enif_make_badarg(env);
+
+    return enif_make_int64(env, arr->size());
+}
+
+
 
 /** Called both for existing instances as well as new instances not yet created
     by the calling NIF library. */
@@ -155,7 +170,8 @@ static ErlNifFunc judy_funs[] =
     {"new",         0, judy_new},
     {"nif_insert",  3, judy_insert},
     {"nif_remove",  2, judy_remove},
-    {"nif_get",     2, judy_get}
+    {"nif_get",     2, judy_get},
+    {"size",        1, judy_size}
 };
 
 

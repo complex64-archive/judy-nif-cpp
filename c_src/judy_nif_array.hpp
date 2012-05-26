@@ -96,19 +96,14 @@ public:
         std::copy(value0.data, value0.data + value_size, value);
         elem->value = value;
 
-        // Insert new element and retrieve old value (if any).
-        element_pointer old_value =
-            judy_.insert(elem->key, key_size, elem);
+        // Remove any old value and free the associated memory.
+        bool was_removed = this->remove(key0);
 
-        // In case a value was present and thus replaced, free.
-        if (old_value != 0) {
-            binary_alloc_.ordered_free(old_value->key, old_value->key_size);
-            binary_alloc_.ordered_free(old_value->value, old_value->value_size);
-            elem_alloc_.destroy(old_value);
-        }
+        // Insert new element and retrieve old value (if any).
+        judy_.insert(elem->key, key_size, elem);
 
         // Return whether the value was newly inserted.
-        return old_value == 0;
+        return !was_removed;
     }
 
 
@@ -133,8 +128,22 @@ public:
     {
         element_pointer old_value = judy_.remove(key.data, key.size);
 
+        // In case a value was present, free.
+        if (old_value != 0) {
+            binary_alloc_.ordered_free(old_value->key, old_value->key_size);
+            binary_alloc_.ordered_free(old_value->value, old_value->value_size);
+            elem_alloc_.destroy(old_value);
+        }
+
         // Return whether the value was actually removed.
         return old_value != 0;
+    }
+
+
+    inline hs_array_type::size_type
+    size()
+    {
+        return judy_.size();
     }
 
 
