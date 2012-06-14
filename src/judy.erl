@@ -22,7 +22,7 @@ new() ->
 
 
 % TODO - Document!
-insert(JudyArr, Key, Val) ->
+insert(Key, Val, JudyArr) ->
     nif_insert(JudyArr, term_to_binary(Key), term_to_binary(Val)).
 
 
@@ -33,7 +33,7 @@ nif_insert(_JudyArr, _Key, _Value) ->
 
 
 % TODO - Document!
-remove(JudyArr, Key) ->
+remove(Key, JudyArr) ->
     nif_remove(JudyArr, term_to_binary(Key)).
 
 
@@ -43,7 +43,7 @@ nif_remove(_JudyArr, _Key) ->
 
 
 % TODO - Document!
-reserve(_JudyArr, _Size) ->
+reserve(_Size, _JudyArr) ->
     erlang:nif_error(nif_not_loaded).
 
 
@@ -58,18 +58,19 @@ gc(_JudyArr) ->
 
 
 % TODO - Document!
-get(JudyArr, Key) ->
+get(Key, JudyArr) ->
     make_value(nif_get(JudyArr, term_to_binary(Key))).
 
 
 % TODO - Document!
-nif_get(_JudyArr, _Key) ->
+nif_get(_Key, _JudyArr) ->
     erlang:nif_error(nif_not_loaded).
 
 
 % TODO - Document!
-mget(JudyArr, Keys) ->
-    [?MODULE:get(JudyArr, Key) || Key <- Keys].
+mget(Keys, JudyArr) ->
+    [?MODULE:get(Key, JudyArr) || Key <- Keys].
+
 
 
 % TODO - Document!
