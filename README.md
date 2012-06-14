@@ -6,7 +6,8 @@ Erlang [Native Implemented Functions](http://www.erlang.org/doc/tutorial/nif.htm
 Given enough system memory,
 - Arbitary number of elements,
 - Arbitary size of keys and elements,
-- Memory allocation using [pools](http://www.boost.org/libs/pool) for less memory fragmentation
+
+Memory allocation happens using [pools](http://www.boost.org/libs/pool)
 
 ### Non-Features
 - Nested arrays.
@@ -83,9 +84,9 @@ Retrieve multiple values from the array.
 1> J = judy:new().
 <<>>
 2> judy:insert(key, value, J).
-<<>>
+true
 3> judy:insert(key2, value2, J).
-<<>>
+true
 4> judy:mget([key, key2, key3], J).
 [value,value2,{error,key3}]
 ```
