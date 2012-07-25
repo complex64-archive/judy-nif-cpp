@@ -5,7 +5,7 @@ Erlang [Native Implemented Functions](http://www.erlang.org/doc/tutorial/nif.htm
 ### Features
 Given enough system memory,
 - Arbitary number of elements,
-- Arbitary size of keys and elements,
+- Arbitary size of keys and elements.
 
 ### Non-Features
 - Nested arrays.
