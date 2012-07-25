@@ -1,7 +1,5 @@
 -module (judy).
--export ([
-    init/0, new/0, insert/3, remove/2, get/2, mget/2,
-    size/1, gc/1, reserve/2 ]).
+-export ([new/0, insert/3, remove/2, get/2, mget/2, size/1]).
 
 -on_load (init/0).
 
@@ -22,8 +20,9 @@ new() ->
 
 
 % TODO - Document!
-insert(Key, Val, JudyArr) ->
-    nif_insert(JudyArr, term_to_binary(Key), term_to_binary(Val)).
+insert(Key, Val, {judy, JudyArr}) ->
+    nif_insert(JudyArr, term_to_binary(Key), term_to_binary(Val)),
+    {judy, JudyArr}.
 
 
 % TODO - Document!
@@ -33,17 +32,13 @@ nif_insert(_JudyArr, _Key, _Value) ->
 
 
 % TODO - Document!
-remove(Key, JudyArr) ->
-    nif_remove(JudyArr, term_to_binary(Key)).
+remove(Key, {judy, JudyArr}) ->
+    nif_remove(JudyArr, term_to_binary(Key)),
+    {judy, JudyArr}.
 
 
 % TODO - Document!
 nif_remove(_JudyArr, _Key) ->
-    erlang:nif_error(nif_not_loaded).
-
-
-% TODO - Document!
-reserve(_Size, _JudyArr) ->
     erlang:nif_error(nif_not_loaded).
 
 
@@ -53,12 +48,7 @@ size(_JudyArr) ->
 
 
 % TODO - Document!
-gc(_JudyArr) ->
-    erlang:nif_error(nif_not_loaded).
-
-
-% TODO - Document!
-get(Key, JudyArr) ->
+get(Key, {judy, JudyArr}) ->
     make_value(nif_get(JudyArr, term_to_binary(Key))).
 
 

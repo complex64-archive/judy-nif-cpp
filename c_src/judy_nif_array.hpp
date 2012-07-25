@@ -2,15 +2,10 @@
 #define JUDY_NIF_ARRAY_HPP JUDY_NIF_ARRAY_HPP
 
 // std::copy
-#include <cstring>
+#include <algorithm>
 
 // ERL_NIF_TERM, ErlNifBinary
 #include <erl_nif.h>
-
-// boost::pool, boost::object_pool
-#include <boost/pool/poolfwd.hpp>
-#include <boost/pool/pool.hpp>
-#include <boost/pool/object_pool.hpp>
 
 // judy::hs
 #include "judy-cpp.hpp"
@@ -52,21 +47,7 @@ protected:
     typedef hs_array_type* hs_array_pointer;
 
 
-    typedef boost::object_pool<
-        element_type, boost::default_user_allocator_new_delete >
-        element_allocator_type;
-
-    typedef boost::pool<boost::default_user_allocator_malloc_free>
-        binary_allocator_type;
-
-
 public:
-    binary_array(const std::size_t grow_by = 1024)
-        : elem_alloc_(),
-          binary_alloc_(sizeof(value_type), grow_by)
-    {}
-
-
     bool
     insert(const binary_reference key0, const binary_reference value0)
     {
@@ -74,23 +55,24 @@ public:
         const size_type key_size   = key0.size;
 
         // Allocate memory for the new element.
-        element_pointer elem = elem_alloc_.construct();
+        element_pointer elem = new element_type();
         // FIXME - Handle out-of-memory, value == 0.
+
         elem->value_size = value_size;
         elem->key_size = key_size;
 
         // Copy over the key.
-        key_pointer key =
-            static_cast<key_pointer>(binary_alloc_.ordered_malloc(key_size));
+        key_pointer key = new key_type();
+            // static_cast<key_pointer>(binary_alloc_.ordered_malloc(key_size));
         // FIXME - Handle out-of-memory, value == 0.
 
         std::copy(key0.data, key0.data + key_size, key);
         elem->key = key;
 
         // And copy over the value.
-        value_pointer value =
-            static_cast<value_pointer>(
-                binary_alloc_.ordered_malloc(value_size));
+        value_pointer value = new value_type();
+            // static_cast<value_pointer>(
+                // binary_alloc_.ordered_malloc(value_size));
         // FIXME - Handle out-of-memory, value == 0.
 
         std::copy(value0.data, value0.data + value_size, value);
@@ -104,6 +86,7 @@ public:
 
         // Return whether the value was newly inserted.
         return !was_removed;
+        return false;
     }
 
 
@@ -130,9 +113,9 @@ public:
 
         // In case a value was present, free.
         if (old_value != 0) {
-            binary_alloc_.ordered_free(old_value->key, old_value->key_size);
-            binary_alloc_.ordered_free(old_value->value, old_value->value_size);
-            elem_alloc_.destroy(old_value);
+            delete old_value->key;
+            delete old_value->value;
+            delete old_value;
         }
 
         // Return whether the value was actually removed.
@@ -149,8 +132,6 @@ public:
 
 private:
     hs_array_type judy_;
-    element_allocator_type elem_alloc_;
-    binary_allocator_type binary_alloc_;
 };
 
 } // namespace

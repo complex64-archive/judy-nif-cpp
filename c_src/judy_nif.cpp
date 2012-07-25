@@ -27,7 +27,8 @@ judy_new(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
     ERL_NIF_TERM arr_res = enif_make_resource(env, arr);
     enif_release_resource(arr);
 
-    return arr_res;
+    return enif_make_tuple2(env,
+        enif_make_atom(env, "judy"), arr_res);
 }
 
 
