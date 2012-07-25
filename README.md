@@ -7,8 +7,6 @@ Given enough system memory,
 - Arbitary number of elements,
 - Arbitary size of keys and elements,
 
-Memory allocation happens using [pools](http://www.boost.org/libs/pool)
-
 ### Non-Features
 - Nested arrays.
 
@@ -20,42 +18,40 @@ The array is modified in-place, and thus _not a functional data structure_.
 
 
 ##### `judy:new()`
-Creates a new Judy array resource.
+Creates a new Judy array resource wrapped in a tuple.
 ```erlang
 1> judy:new().
-<<>>
+{judy, <<>>}
 ```
 ****
 
 
 ##### `judy:insert(Key, Val, JudyArr)`
 Insert a new value into the array.
-- Returns whether the value was newly inserted.
 
 ```erlang
 1> J = judy:new().
-<<>>
+{judy, <<>>}
 2> judy:insert(key, value, J).
-true
+{judy, <<>>}
 3> judy:insert(key, value, J).
-false
+{judy, <<>>}
 ```
 ****
 
 
 ##### `judy:remove(Key, JudyArr)`
 Remove a key/value from the array.
-- Returns whether the value was actually removed.
 
 ```erlang
 1> J = judy:new().
-<<>>
+{judy, <<>>}
 2> judy:insert(key, value, J).
-true
+{judy, <<>>}
 3> judy:remove(key, J).
-true
+{judy, <<>>}
 4> judy:remove(key, J).
-false
+{judy, <<>>}
 ```
 ****
 
@@ -66,9 +62,9 @@ Retrieve a value from the array.
 
 ```erlang
 1> J = judy:new().
-<<>>
+{judy, <<>>}
 2> judy:insert(key, value, J).
-true
+{judy, <<>>}
 3> judy:get(key, J).
 value
 4> judy:get(foo, J).
@@ -82,11 +78,11 @@ Retrieve multiple values from the array.
 
 ```erlang
 1> J = judy:new().
-<<>>
+{judy, <<>>}
 2> judy:insert(key, value, J).
-true
+{judy, <<>>}
 3> judy:insert(key2, value2, J).
-true
+{judy, <<>>}
 4> judy:mget([key, key2, key3], J).
 [value,value2,{error,key3}]
 ```
